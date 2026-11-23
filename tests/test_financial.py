@@ -20,8 +20,9 @@ def test_cat_xl_hand_case() -> None:
     # Check: P + E[reinstatement premium] = 66 + 66 * 2/3 = 110 = E[recovery].
     loss = np.array([80.0, 200.0, 300.0, 300.0, 300.0])
     year = np.array([0, 0, 1, 1, 1])
-    ylt, s = cat_xl(loss, year, 3, limit=100, attachment=50, reinstatements=1,
-                    reinstatement_rate=1.0)
+    ylt, s = cat_xl(
+        loss, year, 3, limit=100, attachment=50, reinstatements=1, reinstatement_rate=1.0
+    )
     np.testing.assert_allclose(ylt["recovery"], [130, 200, 0])
     np.testing.assert_allclose(ylt["reinstated"], [1.0, 1.0, 0.0])
     assert s["expected_recovery"] == pytest.approx(110)

@@ -40,5 +40,10 @@ Time budget: 2–3 evenings.
 - [x] Conda located; skeleton built (pyproject, config.yaml with TODO(Mx) placeholders, src/chstorm/{metrics,financial,losses}.py,
       tests, README, .gitignore, git init). No commit yet.
 - [x] `climada` env built; 10 tests pass, ruff clean; first local commit 7b09d96 (not pushed; push after M1/M2).
-- [ ] NEXT: M1 hazard + exposure (switch to Opus 5.5, medium effort).
-- [ ] M1 hazard + exposure; M2 impact/ELT/EP; M3 cat XL; M4 uncertainty + Lothar check; M5 README + underwriter one-pager
+- [x] M1 hazard + exposure: src/chstorm/inputs.py, run.py m1_inputs, tests/test_inputs.py (12 tests pass, ruff clean),
+      outputs/m1_exposure_lothar.png. StormEurope CHE v1.2 (4260 events, 142 hist, 1.95/yr; Lothar = event 15100,
+      date 1999-12-26), LitPop CHE v3 rescaled to CHF 2,500 bn (VKG 2024). Not committed yet.
+      Set GDAL_DATA=<env>/Library/share/gdal to silence GDAL warnings. YAML: write floats as 2.5e+12 or cast.
+- [ ] NEXT: Olivier commits M1, then M2 impact/ELT/EP (Opus 5.5, medium): ImpfStormEurope.from_schwierz, ImpactCalc,
+      Poisson YLT from event freq, AAL/OEP/AEP via metrics.py.
+- [ ] M3 cat XL; M4 uncertainty (Welker curve) + Lothar check vs insured loss; M5 README + underwriter one-pager
