@@ -39,6 +39,6 @@ Time budget: 2–3 evenings.
       (needs MeteoSwiss radar + GVZ claims, not open).
 - [x] Conda located; skeleton built (pyproject, config.yaml with TODO(Mx) placeholders, src/chstorm/{metrics,financial,losses}.py,
       tests, README, .gitignore, git init). No commit yet.
-- [ ] NEXT: confirm the `climada` env finished building (`conda env list`; it was started in the background and may have
-      failed or been cut off by /clear), run `pytest` + `ruff check` in it, then first commit. Then M1.
+- [x] `climada` env built; 10 tests pass, ruff clean; first local commit 7b09d96 (not pushed; push after M1/M2).
+- [ ] NEXT: M1 hazard + exposure (switch to Opus 5.5, medium effort).
 - [ ] M1 hazard + exposure; M2 impact/ELT/EP; M3 cat XL; M4 uncertainty + Lothar check; M5 README + underwriter one-pager
