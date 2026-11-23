@@ -1,0 +1,26 @@
+# Every parameter needs a cited source. "TODO(Mx)" = value and citation to be filled in that milestone;
+# nothing here is a final number yet.
+
+hazard:
+  source: CLIMADA StormEurope (WISC historical footprints; probabilistic event set via climada data API)
+  region_country: CHE            # Switzerland
+  n_sim_years: 10000             # simulated years for the YLT (Poisson occurrence), TODO(M2) justify
+  # TODO(M1): confirm data-API dataset names/versions and record them here
+
+exposure:
+  source: CLIMADA LitPop (nightlights x population), country CHE
+  total_value_chf: null          # TODO(M1): scale LitPop to a cited Swiss building-stock value (e.g. GVZ/FOPH/BFS)
+  # TODO(M1): LitPop covers all assets; say how it is narrowed to property
+
+vulnerability:
+  base: schwierz2010             # TODO(M2): confirm CLIMADA's ImpfStormEurope.from_schwierz parameters
+  alternative: welker2021        # TODO(M4): confirm ImpfStormEurope.from_welker parameters
+
+layer:                           # TODO(M3): choose attachment/limit from the EP curve, cite as illustrative
+  attachment_chf: null
+  limit_chf: null
+  reinstatements: 1
+  reinstatement_rate: 1.0
+
+validation:
+  historical_storm: Lothar_1999  # TODO(M4): cite published insured-loss figure for Switzerland

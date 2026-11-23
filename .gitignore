@@ -1,0 +1,24 @@
+# Data: CLIMADA downloads to ~/climada/data, local extracts go here; never committed
+data/
+
+# Model outputs (selected figures are copied to docs/)
+outputs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editors / OS / local agent settings
+.vscode/
+.idea/
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
