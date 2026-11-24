@@ -18,15 +18,31 @@ from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 from chstorm.losses import build_elt, build_ylt
 
 
-def make_impf_set(name: str = "schwierz2010") -> ImpactFuncSet:
-    """Impact function set (haz_type WS, id 1) for the named curve."""
+def make_impf_set(name: str = "schwierz2010", scale: float = 1.0) -> ImpactFuncSet:
+    """Impact function set (haz_type WS, id 1) for the named curve.
+
+    `scale` multiplies the mean damage degree (capped at 100%). This is how the curve is
+    calibrated to a known historical loss: shape from the literature, level from claims.
+    """
     builders = {
         "schwierz2010": ImpfStormEurope.from_schwierz,
         "welker2021": ImpfStormEurope.from_welker,
     }
     if name not in builders:
         raise ValueError(f"unknown vulnerability curve: {name}")
-    return ImpactFuncSet([builders[name]()])
+    impf = builders[name]()
+    impf.mdd = np.minimum(impf.mdd * scale, 1.0)
+    return ImpactFuncSet([impf])
+
+
+def calibration_scale(modelled: float, target: float) -> float:
+    """Damage scale factor so a historical event's modelled loss matches its observed loss.
+
+    Exact while no point hits the 100% damage cap (true here: damage ratios stay at a few %).
+    """
+    if modelled <= 0:
+        raise ValueError("event has zero modelled loss; cannot calibrate")
+    return target / modelled
 
 
 def event_losses(haz, exp, impf_set) -> np.ndarray:

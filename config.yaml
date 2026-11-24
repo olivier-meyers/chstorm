@@ -25,11 +25,21 @@ vulnerability:
   base: schwierz2010             # TODO(M2): confirm CLIMADA's ImpfStormEurope.from_schwierz parameters
   alternative: welker2021        # TODO(M4): confirm ImpfStormEurope.from_welker parameters
 
-layer:                           # TODO(M3): choose attachment/limit from the EP curve, cite as illustrative
-  attachment_chf: null
-  limit_chf: null
+layer:
+  # ILLUSTRATIVE per-occurrence cat XL on the calibrated market portfolio, set from the EP curve (not a real
+  # treaty): attaches between the 50- and 100-yr OEP loss, exhausts near the 200-yr loss. 1 reinstatement at
+  # 100% (paid pro rata capita), the usual cat XL convention.
+  attachment_chf: 2.5e+8
+  limit_chf: 1.0e+9
   reinstatements: 1
   reinstatement_rate: 1.0
 
-validation:
-  historical_storm: Lothar_1999  # TODO(M4): cite published insured-loss figure for Switzerland
+calibration:
+  # Lothar, 26 Dec 1999, is the Swiss benchmark storm. Total Swiss damage was about CHF 1.78 bn, mostly forest;
+  # building damage was ~CHF 600 m (Blick, "Katastrophen der Schweiz"; PLANAT chronicle gives ~CHF 500 m).
+  # Our exposure is buildings, so we calibrate to the building figure, not the Europe-wide EUR 5 bn.
+  historical_storm_date: "1999-12-26"
+  lothar_building_loss_1999_chf: 6.0e+8
+  # Restates the 1999 loss on today's portfolio: construction-cost inflation x growth of the building stock,
+  # 1999-2024. ILLUSTRATIVE ASSUMPTION (~+1.8%/yr compound), to be checked against VKG insured-value series.
+  trend_factor_to_2024: 1.5

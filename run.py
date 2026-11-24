@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 
-from chstorm.impact import event_losses, make_impf_set, sample_ylt
+from chstorm.financial import cat_xl
+from chstorm.impact import calibration_scale, event_losses, make_impf_set, sample_ylt
 from chstorm.inputs import event_by_date, historical_mask, load_exposure, load_hazard
 from chstorm.metrics import aal, ep_table, exceedance_curve, expected_shortfall_99
 
@@ -53,16 +54,27 @@ def m1_inputs(cfg: dict):
     return haz, exp
 
 
-def m2_losses(cfg: dict, haz, exp, curve: str | None = None):
+def lothar_target(cfg: dict) -> float:
+    c = cfg["calibration"]
+    return float(c["lothar_building_loss_1999_chf"]) * float(c["trend_factor_to_2024"])
+
+
+def m2_losses(cfg: dict, haz, exp, curve: str | None = None, calibrate: bool = True):
     curve = curve or cfg["vulnerability"]["base"]
     n_years = int(cfg["hazard"]["n_sim_years"])
+    lothar = event_by_date(haz, cfg["calibration"]["historical_storm_date"])
     loss = event_losses(haz, exp, make_impf_set(curve))
+    if calibrate:
+        scale = calibration_scale(loss[lothar], lothar_target(cfg))
+        print(f"[{curve}] raw Lothar CHF {loss[lothar] / 1e9:.2f} bn -> damage scale x{scale:.2f}")
+        loss = event_losses(haz, exp, make_impf_set(curve, scale))
     elt, ylt = sample_ylt(loss, np.asarray(haz.frequency), n_years)
-    lothar = event_by_date(haz, "1999-12-26")
     print(f"[{curve}] Lothar modelled loss today: CHF {loss[lothar] / 1e9:.2f} bn")
     permille = aal(ylt) / float(cfg["exposure"]["total_value_chf"]) * 1e3
-    print(f"  events with loss>0: {(loss > 0).sum()} of {haz.size}; "
-          f"AAL CHF {aal(ylt) / 1e6:,.0f} m ({permille:.3f} permille of value)")
+    print(
+        f"  events with loss>0: {(loss > 0).sum()} of {haz.size}; "
+        f"AAL CHF {aal(ylt) / 1e6:,.0f} m ({permille:.3f} permille of value)"
+    )
     print(f"  ES 99%: CHF {expected_shortfall_99(ylt) / 1e9:.2f} bn")
     print((ep_table(ylt)[["OEP", "AEP"]] / 1e9).round(2).to_string())
     return loss, elt, ylt
@@ -82,11 +94,35 @@ def plot_ep(ylt, path):
     fig.savefig(path, dpi=120)
 
 
+def m3_layer(cfg: dict, elt, n_years: int) -> dict:
+    lay = cfg["layer"]
+    lim, att = float(lay["limit_chf"]), float(lay["attachment_chf"])
+    _, s = cat_xl(
+        elt["loss"].to_numpy(),
+        elt["year"].to_numpy(),
+        n_years,
+        lim,
+        att,
+        int(lay["reinstatements"]),
+        float(lay["reinstatement_rate"]),
+    )
+    print(f"Layer CHF {lim / 1e6:,.0f} m xs {att / 1e6:,.0f} m:")
+    print(
+        f"  expected loss CHF {s['expected_recovery'] / 1e6:.1f} m, pure premium "
+        f"{s['pure_premium'] / 1e6:.1f} m, ROL {s['rate_on_line']:.2%}, "
+        f"P(attach) {s['p_attach']:.2%} (1 in {1 / s['p_attach']:.0f} yrs), "
+        f"P(exhaust) {s['p_exhaust']:.2%}"
+    )
+    return s
+
+
 def main() -> None:
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
+    n_years = int(cfg["hazard"]["n_sim_years"])
     haz, exp = m1_inputs(cfg)
     loss, elt, ylt = m2_losses(cfg, haz, exp)
     plot_ep(ylt, OUT / "m2_ep_curve.png")
+    m3_layer(cfg, elt, n_years)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,15 @@
 import numpy as np
 
-from chstorm.impact import sample_ylt
+from chstorm.impact import calibration_scale, make_impf_set, sample_ylt
+
+
+def test_calibration_scale():
+    assert calibration_scale(2.0, 10.0) == 5.0
+
+
+def test_scaled_curve_capped_at_one():
+    impf = make_impf_set("welker2021", scale=1e6).get_func()["WS"][1]
+    assert impf.mdd.max() == 1.0
 
 
 def test_ylt_aal_matches_analytic():
