@@ -23,7 +23,12 @@ exposure:
 
 vulnerability:
   base: schwierz2010             # TODO(M2): confirm CLIMADA's ImpfStormEurope.from_schwierz parameters
-  alternative: welker2021        # TODO(M4): confirm ImpfStormEurope.from_welker parameters
+  # Welker et al. 2021 (NHESS 21) is ~1.78 x Schwierz at every gust, so after calibration to Lothar it gives
+  # identical results and is no test. M4 instead varies the SHAPE: damage = ((gust - 25) / 35)^n, n = 2, 3, 5,
+  # each re-calibrated to Lothar. n = 3 is the cubic law of Klawa & Ulbrich 2003 (NHESS 3); the 25 m/s
+  # threshold is where the Schwierz curve starts (a fixed national value, not K&U's local 98th percentile).
+  shape_alternatives: [power2, power3, power5]
+  bootstrap_resamples: 1000      # years resampled with replacement for the 90% CI on the 200-yr loss
 
 layer:
   # ILLUSTRATIVE per-occurrence cat XL on the calibrated market portfolio, set from the EP curve (not a real

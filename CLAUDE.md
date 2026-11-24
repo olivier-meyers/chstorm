@@ -58,7 +58,12 @@ Time budget: 2–3 evenings.
 - [x] M3: run.py m3_layer, config layer = CHF 1,000 m xs 250 m, 1 reinst @100% (illustrative). Expected loss CHF 11.1 m,
       pure premium 11.0 m, ROL 1.10%, attaches 1 in 58 yrs. Not committed (M1-M3 all uncommitted).
 - [x] M1-M3 committed (b7c345d). README updated with M2/M3 results (uncommitted); plain-language recap given to Olivier.
-- [ ] NEXT: Olivier commits README. Then M4: shape uncertainty = damage ∝ (gust - threshold)^n, n in {2,3,5} (cubic = Klawa &
-      Ulbrich 2003), each calibrated to Lothar -> show spread of 200-yr loss and layer ROL; plus convergence/bootstrap CI
-      on 200-yr (metrics.bootstrap_ci). Also check modelled Lothar return period (~100 yr) for plausibility.
-- [ ] M5 README + underwriter one-pager
+- [x] README committed (380bd29).
+- [x] M4: impact.power_impf (damage = ((gust-25)/35)^n, 0..100 m/s grid), make_impf_set("power<n>"), run.calibrated_losses,
+      run.m4_uncertainty + outputs/m4_shape_uncertainty.png, config vulnerability.shape_alternatives, 17 tests, ruff clean.
+      Not committed. RESULT (all calibrated to Lothar, same seed): 200-yr OEP schwierz 1.27 / n2 1.15 / n3 1.25 / n5 1.39 bn
+      (1.20x range); AAL 20-23 m; ROL 1.08-1.14%; Lothar RP 94-104 yr (plausible). Base 200-yr bootstrap 90% CI 1.09-1.44 bn
+      -> MC noise >= shape spread. KEY INSIGHT: OEP jumps 0.18 bn (50 yr) -> 0.89 bn (100 yr): the tail is the Lothar
+      family (Lothar + 29 perturbations), so the Lothar anchor pins the tail and shape barely matters. Biggest remaining
+      uncertainties = calibration target (600 m x 1.5 trend) and hazard catalogue (only 142 historical storms).
+- [ ] NEXT: Olivier commits M4. Then M5: README M4 section + underwriter one-pager (Sonnet), final assumptions review (Opus).

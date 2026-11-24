@@ -12,25 +12,50 @@ proportion to its frequency. Poisson is the standard cat-model assumption for ev
 import numpy as np
 import pandas as pd
 from climada.engine import ImpactCalc
-from climada.entity import ImpactFuncSet
+from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 
 from chstorm.losses import build_elt, build_ylt
+
+POWER_THRESHOLD_MS = 25.0  # gust below which no damage; = where the Schwierz curve starts
+
+
+def power_impf(n: float, threshold: float = POWER_THRESHOLD_MS) -> ImpactFunc:
+    """Damage ratio = ((gust - threshold) / (60 - threshold))^n, 0 below threshold.
+
+    A one-parameter family to test curve SHAPE: n = 3 is the cubic law of Klawa & Ulbrich
+    (2003); n = 2 spreads loss over moderate storms, n = 5 concentrates it in the extremes.
+    The level (value at 60 m/s) is arbitrary because it is calibrated away afterwards.
+    """
+    v = np.arange(0.0, 101.0)
+    return ImpactFunc(
+        haz_type="WS",
+        id=1,
+        intensity=v,
+        mdd=np.clip((v - threshold) / (60.0 - threshold), 0.0, None) ** n,
+        paa=np.ones_like(v),
+        intensity_unit="m/s",
+        name=f"power{n:g}",
+    )
 
 
 def make_impf_set(name: str = "schwierz2010", scale: float = 1.0) -> ImpactFuncSet:
     """Impact function set (haz_type WS, id 1) for the named curve.
 
-    `scale` multiplies the mean damage degree (capped at 100%). This is how the curve is
-    calibrated to a known historical loss: shape from the literature, level from claims.
+    Names: schwierz2010, welker2021, or power<n> (e.g. power3). `scale` multiplies the mean
+    damage degree (capped at 100%). This is how the curve is calibrated to a known historical
+    loss: shape from the literature, level from claims.
     """
     builders = {
         "schwierz2010": ImpfStormEurope.from_schwierz,
         "welker2021": ImpfStormEurope.from_welker,
     }
-    if name not in builders:
+    if name.startswith("power"):
+        impf = power_impf(float(name[5:]))
+    elif name in builders:
+        impf = builders[name]()
+    else:
         raise ValueError(f"unknown vulnerability curve: {name}")
-    impf = builders[name]()
     impf.mdd = np.minimum(impf.mdd * scale, 1.0)
     return ImpactFuncSet([impf])
 

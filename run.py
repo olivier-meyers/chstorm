@@ -4,12 +4,20 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import yaml
 
 from chstorm.financial import cat_xl
 from chstorm.impact import calibration_scale, event_losses, make_impf_set, sample_ylt
 from chstorm.inputs import event_by_date, historical_mask, load_exposure, load_hazard
-from chstorm.metrics import aal, ep_table, exceedance_curve, expected_shortfall_99
+from chstorm.metrics import (
+    aal,
+    bootstrap_ci,
+    ep_table,
+    exceedance_curve,
+    expected_shortfall_99,
+    return_period_loss,
+)
 
 ROOT = Path(__file__).parent
 CONFIG = ROOT / "config.yaml"
@@ -59,15 +67,20 @@ def lothar_target(cfg: dict) -> float:
     return float(c["lothar_building_loss_1999_chf"]) * float(c["trend_factor_to_2024"])
 
 
-def m2_losses(cfg: dict, haz, exp, curve: str | None = None, calibrate: bool = True):
+def calibrated_losses(cfg: dict, haz, exp, curve: str) -> tuple[np.ndarray, float]:
+    """Per-event losses with the curve scaled so Lothar matches its trended building loss."""
+    lothar = event_by_date(haz, cfg["calibration"]["historical_storm_date"])
+    raw = event_losses(haz, exp, make_impf_set(curve))
+    scale = calibration_scale(raw[lothar], lothar_target(cfg))
+    return event_losses(haz, exp, make_impf_set(curve, scale)), scale
+
+
+def m2_losses(cfg: dict, haz, exp, curve: str | None = None):
     curve = curve or cfg["vulnerability"]["base"]
     n_years = int(cfg["hazard"]["n_sim_years"])
     lothar = event_by_date(haz, cfg["calibration"]["historical_storm_date"])
-    loss = event_losses(haz, exp, make_impf_set(curve))
-    if calibrate:
-        scale = calibration_scale(loss[lothar], lothar_target(cfg))
-        print(f"[{curve}] raw Lothar CHF {loss[lothar] / 1e9:.2f} bn -> damage scale x{scale:.2f}")
-        loss = event_losses(haz, exp, make_impf_set(curve, scale))
+    loss, scale = calibrated_losses(cfg, haz, exp, curve)
+    print(f"[{curve}] calibrated to Lothar: damage scale x{scale:.2f}")
     elt, ylt = sample_ylt(loss, np.asarray(haz.frequency), n_years)
     print(f"[{curve}] Lothar modelled loss today: CHF {loss[lothar] / 1e9:.2f} bn")
     permille = aal(ylt) / float(cfg["exposure"]["total_value_chf"]) * 1e3
@@ -94,7 +107,7 @@ def plot_ep(ylt, path):
     fig.savefig(path, dpi=120)
 
 
-def m3_layer(cfg: dict, elt, n_years: int) -> dict:
+def m3_layer(cfg: dict, elt, n_years: int, verbose: bool = True) -> dict:
     lay = cfg["layer"]
     lim, att = float(lay["limit_chf"]), float(lay["attachment_chf"])
     _, s = cat_xl(
@@ -106,6 +119,8 @@ def m3_layer(cfg: dict, elt, n_years: int) -> dict:
         int(lay["reinstatements"]),
         float(lay["reinstatement_rate"]),
     )
+    if not verbose:
+        return s
     print(f"Layer CHF {lim / 1e6:,.0f} m xs {att / 1e6:,.0f} m:")
     print(
         f"  expected loss CHF {s['expected_recovery'] / 1e6:.1f} m, pure premium "
@@ -116,6 +131,74 @@ def m3_layer(cfg: dict, elt, n_years: int) -> dict:
     return s
 
 
+def m4_uncertainty(cfg: dict, haz, exp, ylt_base) -> pd.DataFrame:
+    """Curve-shape spread (epistemic) next to Monte Carlo noise (bootstrap) on the 200-yr loss.
+
+    Every curve is calibrated to Lothar and run on the SAME simulated years (same seed), so any
+    difference comes from the curve shape alone: how loss is spread between moderate and
+    extreme storms once the Lothar anchor is fixed.
+    """
+    v = cfg["vulnerability"]
+    n_years = int(cfg["hazard"]["n_sim_years"])
+    lothar = event_by_date(haz, cfg["calibration"]["historical_storm_date"])
+    freq = np.asarray(haz.frequency)
+    rows, eps, impfs = {}, {}, {}
+    for curve in [v["base"], *v["shape_alternatives"]]:
+        loss, scale = calibrated_losses(cfg, haz, exp, curve)
+        elt, ylt = sample_ylt(loss, freq, n_years)
+        oep = ylt["max_loss"].to_numpy()
+        s = m3_layer(cfg, elt, n_years, verbose=False)
+        rows[curve] = {
+            "AAL_m": aal(ylt) / 1e6,
+            "OEP100_bn": return_period_loss(oep, 100) / 1e9,
+            "OEP200_bn": return_period_loss(oep, 200) / 1e9,
+            "lothar_rp_yr": 1 / (oep >= loss[lothar] * (1 - 1e-9)).mean(),
+            "layer_EL_m": s["expected_recovery"] / 1e6,
+            "ROL_pct": s["rate_on_line"] * 100,
+        }
+        eps[curve], impfs[curve] = oep, make_impf_set(curve, scale).get_func()["WS"][1]
+    tab = pd.DataFrame(rows).T
+    print("M4 curve-shape sensitivity (all calibrated to Lothar, same simulated years):")
+    print(tab.round(2).to_string())
+    o200 = tab["OEP200_bn"]
+    print(
+        f"  200-yr OEP range: {o200.min():.2f}-{o200.max():.2f} bn ({o200.max() / o200.min():.2f}x)"
+    )
+
+    ci = bootstrap_ci(
+        ylt_base["max_loss"].to_numpy(),
+        200,
+        np.random.default_rng(1),
+        n_boot=int(v["bootstrap_resamples"]),
+    )
+    lo, hi = ci["loss_200"]
+    print(f"  base 200-yr OEP 90% bootstrap CI (sampling noise): {lo / 1e9:.2f}-{hi / 1e9:.2f} bn")
+
+    fig, ax = plt.subplots(1, 2, figsize=(12, 4.5))
+    for curve, impf in impfs.items():
+        ax[0].plot(impf.intensity, impf.mdd * impf.paa * 100, label=curve)
+        x, f = exceedance_curve(eps[curve])
+        ax[1].plot(1 / f, x / 1e9, label=curve)
+    ax[0].set_xlim(20, 60)
+    ax[0].set_ylim(0, 10)
+    ax[0].set_xlabel("peak gust (m/s)")
+    ax[0].set_ylabel("mean damage ratio (%)")
+    ax[0].set_title("Calibrated curves (all reproduce Lothar)")
+    ax[1].axhspan(lo / 1e9, hi / 1e9, xmin=0, xmax=1, color="grey", alpha=0.15)
+    ax[1].axvline(200, color="grey", ls=":")
+    ax[1].set_xscale("log")
+    ax[1].set_xlim(2, n_years)
+    ax[1].set_xlabel("return period (years)")
+    ax[1].set_ylabel("OEP loss (CHF bn)")
+    ax[1].set_title("OEP by curve shape; band = base 200-yr 90% CI")
+    for a in ax:
+        a.legend()
+        a.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(OUT / "m4_shape_uncertainty.png", dpi=120)
+    return tab
+
+
 def main() -> None:
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     n_years = int(cfg["hazard"]["n_sim_years"])
@@ -123,6 +206,7 @@ def main() -> None:
     loss, elt, ylt = m2_losses(cfg, haz, exp)
     plot_ep(ylt, OUT / "m2_ep_curve.png")
     m3_layer(cfg, elt, n_years)
+    m4_uncertainty(cfg, haz, exp, ylt)
 
 
 if __name__ == "__main__":

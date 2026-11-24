@@ -12,6 +12,13 @@ def test_scaled_curve_capped_at_one():
     assert impf.mdd.max() == 1.0
 
 
+def test_power_curve_shape():
+    impf = make_impf_set("power3").get_func()["WS"][1]
+    assert impf.calc_mdr(np.array([25.0]))[0] == 0.0
+    assert np.isclose(impf.calc_mdr(np.array([60.0]))[0], 1.0)
+    assert np.isclose(impf.calc_mdr(np.array([46.0]))[0], 0.6**3)  # 21/35 of the way -> 0.216
+
+
 def test_ylt_aal_matches_analytic():
     loss = np.array([0.0, 10.0, 100.0])
     freq = np.array([1.0, 0.5, 0.1])
