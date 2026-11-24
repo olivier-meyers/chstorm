@@ -66,4 +66,8 @@ Time budget: 2–3 evenings.
       -> MC noise >= shape spread. KEY INSIGHT: OEP jumps 0.18 bn (50 yr) -> 0.89 bn (100 yr): the tail is the Lothar
       family (Lothar + 29 perturbations), so the Lothar anchor pins the tail and shape barely matters. Biggest remaining
       uncertainties = calibration target (600 m x 1.5 trend) and hazard catalogue (only 142 historical storms).
-- [ ] NEXT: Olivier commits M4. Then M5: README M4 section + underwriter one-pager (Sonnet), final assumptions review (Opus).
+- [x] M4 committed (b852ea3).
+- [x] M5: README (M4 section, ranked assumptions/limitations, quick start fixed: `python run.py` runs M1-M4, no subcommands),
+      docs/underwriter_summary.md (one-pager), config.yaml stale TODOs resolved. Not committed.
+- [ ] NEXT: Olivier reviews + commits M5, then pushes to GitHub. Optional: verify Lothar 600 m and the 1.5 trend vs VKG
+      series (top-ranked assumption); optional clustering note/extension; optional combined EQ + storm view.

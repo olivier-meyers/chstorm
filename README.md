@@ -1,6 +1,6 @@
 # chstorm: a winter storm loss model for Swiss property
 
-> Work in progress. This is a portfolio project, not a production model.
+> Portfolio project, not a production model. One-page summary for underwriters: [docs/underwriter_summary.md](docs/underwriter_summary.md).
 
 A small, reproducible extratropical windstorm catastrophe model for Swiss property, built on [CLIMADA](https://github.com/CLIMADA-project/climada_python):
 
@@ -16,8 +16,8 @@ The aim is a transparent "own view of risk" that runs from storm footprints to a
 | M1        | Hazard (StormEurope footprints) + exposure (LitPop, Switzerland) | done    |
 | M2        | Impact function (Schwierz, calibrated to Lothar) → ELT/YLT → AAL, OEP/AEP | done |
 | M3        | Cat XL layer: expected layer loss, rate on line                  | done    |
-| M4        | Uncertainty (vulnerability curve shape, sampling CI) + Lothar return period | planned |
-| M5        | Final README, figures, one-page summary for underwriters         | planned |
+| M4        | Uncertainty (vulnerability curve shape, sampling CI) + Lothar return period | done |
+| M5        | Final README, assumptions review, one-page summary for underwriters | done |
 
 ## Quick start
 
@@ -28,12 +28,10 @@ conda activate climada
 pip install -e . --no-deps
 # Windows: GDAL needs GDAL_DATA, e.g. $env:GDAL_DATA="$env:CONDA_PREFIX\Library\share\gdal"
 pytest
-python run.py m1_inputs
-python run.py m2_losses
-python run.py m3_layer
+python run.py   # runs M1-M4 in order, prints the tables and writes the figures to outputs/
 ```
 
-## Results so far
+## Results
 
 Inputs:
 
@@ -54,6 +52,35 @@ Losses (10,000 simulated years, Schwierz curve scaled x6.18 so Lothar = CHF 0.9 
 Illustrative cat XL layer, CHF 1,000 m xs 250 m, one reinstatement at 100%: expected layer loss CHF 11.1 m, rate on line 1.10%, attaches about once in 58 years.
 
 Without calibration the Schwierz curve gives Lothar only CHF 0.15 bn, roughly a sixth of the observed building loss. CLIMADA's Welker curve is a constant multiple (~1.78x) of Schwierz, so after calibration it gives the same answer; M4 therefore tests the curve's *shape* instead.
+
+### Uncertainty (M4)
+
+Three alternative curves, damage = ((gust − 25) / 35)^n with n = 2, 3, 5 (n = 3 is the cubic law of Klawa & Ulbrich 2003), each re-calibrated to Lothar and run on the same simulated years:
+
+| Curve     | 200-yr OEP (CHF bn) |
+| --------- | ------------------- |
+| Schwierz  | 1.27                |
+| n = 2     | 1.15                |
+| n = 3     | 1.25                |
+| n = 5     | 1.39                |
+
+Across curves the AAL is CHF 20–23 m, the layer rate on line 1.08–1.14%, and Lothar's modelled return period 94–104 years, which is plausible for the benchmark storm of the past century. The shape spread (×1.20) is about the same size as the sampling noise: the 90% bootstrap interval on the base 200-yr loss is CHF 1.09–1.44 bn.
+
+Why the shape matters so little: the OEP curve jumps from CHF 0.18 bn at 50 years to 0.89 bn at 100 years. The tail is the Lothar family (Lothar plus its 29 synthetic perturbations), so calibrating to Lothar pins the tail and every curve agrees there.
+
+![Curve-shape sensitivity](outputs/m4_shape_uncertainty.png)
+
+## Main assumptions and limitations
+
+Ranked by how much they could move the 200-yr loss:
+
+1. **Calibration target.** Lothar building loss CHF 600 m (sources range 500–600 m) × an illustrative trend factor of 1.5 to today's portfolio. The tail scales almost one-for-one with this number, so it matters more than the curve choice.
+2. **Hazard catalogue.** 142 historical storms (1940–2013), each with 29 perturbations. The perturbations stay close to the parent storm, so the tail rests on very few independent events. No climate trend is applied.
+3. **No clustering.** Storms arrive as independent Poisson events. European windstorms cluster (Lothar and Martin hit two days apart in 1999), so the AEP and the value of reinstatements are likely understated.
+4. **Exposure.** LitPop's spatial pattern (economic activity, not building locations), rescaled to the CHF 2,500 bn insured by the cantonal building insurers and applied to all of Switzerland. Buildings only: no contents, no business interruption, no deductibles or policy limits.
+5. **Footprint resolution.** 4.4 km gusts smooth local peaks; the calibration absorbs this on average but not location by location.
+
+The layer (CHF 1,000 m xs 250 m) is illustrative and is not a real treaty.
 
 ## Layout
 

@@ -1,5 +1,4 @@
-# Every parameter needs a cited source. "TODO(Mx)" = value and citation to be filled in that milestone;
-# nothing here is a final number yet.
+# Every parameter has a cited source or is flagged ILLUSTRATIVE (a stated assumption, not a sourced value).
 
 hazard:
   # CLIMADA data API (climada 6.2.0): storm_europe_150arcsec_CHE, v1.2, 150 arcsec (~4.4 km).
@@ -9,7 +8,8 @@ hazard:
   source: CLIMADA StormEurope / WISC
   dataset_version: v1.2
   region_country: CHE            # Switzerland
-  n_sim_years: 10000             # simulated years for the YLT (Poisson occurrence), TODO(M2) justify
+  n_sim_years: 10000             # simulated years (Poisson). ~50 years exceed the 200-yr loss; the bootstrap CI
+                                 # in M4 shows the remaining sampling noise (about +-15% on the 200-yr loss)
 
 exposure:
   # LitPop (Eberenz et al. 2020, ESSD 12): produced capital 2018 (World Bank), split by night lights x
@@ -22,7 +22,8 @@ exposure:
   total_value_chf: 2.5e12
 
 vulnerability:
-  base: schwierz2010             # TODO(M2): confirm CLIMADA's ImpfStormEurope.from_schwierz parameters
+  base: schwierz2010             # CLIMADA ImpfStormEurope.from_schwierz (12-point paa x mdd curve, starts at 25 m/s),
+                                 # Schwierz et al. 2010; scaled to Lothar (see calibration)
   # Welker et al. 2021 (NHESS 21) is ~1.78 x Schwierz at every gust, so after calibration to Lothar it gives
   # identical results and is no test. M4 instead varies the SHAPE: damage = ((gust - 25) / 35)^n, n = 2, 3, 5,
   # each re-calibrated to Lothar. n = 3 is the cubic law of Klawa & Ulbrich 2003 (NHESS 3); the 25 m/s
