@@ -57,7 +57,8 @@ Time budget: 2–3 evenings.
       identical results -> a Welker swap tests nothing. M4 needs a SHAPE alternative instead.
 - [x] M3: run.py m3_layer, config layer = CHF 1,000 m xs 250 m, 1 reinst @100% (illustrative). Expected loss CHF 11.1 m,
       pure premium 11.0 m, ROL 1.10%, attaches 1 in 58 yrs. Not committed (M1-M3 all uncommitted).
-- [ ] NEXT: Olivier commits. Then M4: shape uncertainty = damage ∝ (gust - threshold)^n, n in {2,3,5} (cubic = Klawa &
+- [x] M1-M3 committed (b7c345d). README updated with M2/M3 results (uncommitted); plain-language recap given to Olivier.
+- [ ] NEXT: Olivier commits README. Then M4: shape uncertainty = damage ∝ (gust - threshold)^n, n in {2,3,5} (cubic = Klawa &
       Ulbrich 2003), each calibrated to Lothar -> show spread of 200-yr loss and layer ROL; plus convergence/bootstrap CI
       on 200-yr (metrics.bootstrap_ci). Also check modelled Lothar return period (~100 yr) for plausibility.
 - [ ] M5 README + underwriter one-pager
