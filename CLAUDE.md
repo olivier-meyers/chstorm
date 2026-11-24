@@ -44,6 +44,11 @@ Time budget: 2–3 evenings.
       outputs/m1_exposure_lothar.png. StormEurope CHE v1.2 (4260 events, 142 hist, 1.95/yr; Lothar = event 15100,
       date 1999-12-26), LitPop CHE v3 rescaled to CHF 2,500 bn (VKG 2024). Not committed yet.
       Set GDAL_DATA=<env>/Library/share/gdal to silence GDAL warnings. YAML: write floats as 2.5e+12 or cast.
-- [ ] NEXT: Olivier commits M1, then M2 impact/ELT/EP (Opus 5.5, medium): ImpfStormEurope.from_schwierz, ImpactCalc,
-      Poisson YLT from event freq, AAL/OEP/AEP via metrics.py.
-- [ ] M3 cat XL; M4 uncertainty (Welker curve) + Lothar check vs insured loss; M5 README + underwriter one-pager
+- [x] M2 impact/ELT/YLT: src/chstorm/impact.py (ImpfStormEurope.from_schwierz = paa x mdd, 12-pt curve; ImpactCalc;
+      Poisson YLT, 10,000 yrs, seeded), run.py m2_losses + outputs/m2_ep_curve.png, tests/test_impact.py (14 tests pass in total, ruff clean).
+      RESULT (uncalibrated Schwierz): AAL CHF 4 m, Lothar CHF 0.15 bn, 200-yr OEP/AEP 0.21 bn, ES99 0.22 bn.
+      FLAG: far too low. Lothar insured loss in CH was ~CHF 1.3 bn (1999; verify source). Cause: curve gives ~0.3% damage at 45 m/s
+      and 4.4 km gusts are smoothed. Decide in M4: calibrate a scale factor to Lothar, and/or use Welker (mdd 1.4% at 43 m/s).
+- [ ] NEXT: Olivier commits M1+M2. Then M3 (cat XL; attachment/limit must wait for calibration, else layer is meaningless):
+      suggest doing the Lothar calibration + Welker swap (M4 part) BEFORE M3.
+- [ ] M3 cat XL; M4 uncertainty (Welker curve) + Lothar calibration/check vs insured loss; M5 README + underwriter one-pager
