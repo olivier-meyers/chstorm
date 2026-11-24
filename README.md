@@ -9,13 +9,13 @@ Short version for underwriters: [docs/underwriter_summary.md](docs/underwriter_s
 ## What I found
 
 1. **The Swiss storm tail is one storm deep.** The OEP curve goes from CHF 0.18 bn at 1-in-50 to 0.89 bn at 1-in-100. Everything above that is Lothar and its 29 synthetic perturbations. In the model, Lothar costs 7× the next-worst historical storm (Vivian, 1990).
-2. **So the calibration anchor matters more than the damage curve.** I tried four curve shapes, each re-calibrated to Lothar. The 1-in-200 loss only moves between CHF 1.15 and 1.39 bn, about the same spread as the Monte Carlo noise. The Lothar loss itself (CHF 500–600 m in 1999, trended to today) moves the tail one for one.
+2. **So the calibration anchor matters more than the damage curve.** I tried four curve shapes, each re-calibrated to Lothar. The 1-in-200 loss only moves between CHF 1.15 and 1.39 bn, about the same spread as the Monte Carlo noise. The Lothar loss itself (CHF 500 to 600 m in 1999, trended to today) moves the tail one for one.
 3. **Swapping Schwierz for Welker tests nothing.** In CLIMADA, the Welker curve is a constant ~1.78× Schwierz, so once calibrated both give the same numbers. A useful sensitivity has to change the shape of the curve, not its level.
 4. **Storm clustering barely moves this portfolio.** 74 winters of data can't tell clustered from Poisson for Switzerland (φ = −0.06 ± 0.17). Even with strong clustering imposed (φ = 1), the 1-in-200 aggregate loss and the layer price don't change. The tail is a single storm, and a second storm in the same winter is usually small. This would look different for a UK or North Sea book, or for a low layer.
 
 ## Results
 
-10,000 simulated years, Schwierz curve scaled ×6.18 so Lothar costs CHF 0.9 bn on today's portfolio.
+These come from 10,000 simulated years, with the Schwierz curve scaled ×6.18 so that Lothar costs CHF 0.9 bn on today's portfolio.
 
 | Metric                      | CHF                   |
 | --------------------------- | --------------------- |
@@ -39,16 +39,16 @@ Alternatives of the form damage = ((gust − 25) / 35)^n, n = 2, 3, 5 (n = 3 is 
 | n = 3    | 1.25                  | 1.11%        |
 | n = 5    | 1.39                  | 1.08%        |
 
-90% bootstrap interval on the base 1-in-200 loss: CHF 1.09–1.44 bn.
+90% bootstrap interval on the base 1-in-200 loss: CHF 1.09 to 1.44 bn.
 
 ![Curve-shape sensitivity](docs/figures/shape_uncertainty.png)
 
 ### Clustering
 
-European winter storms come in runs when the jet stream stays strong and zonal for weeks: Lothar and Martin two days apart in December 1999, or Daria, Vivian and Wiebke in early 1990. Cat models usually assume Poisson arrivals, which ignores this. I tested it in two steps:
+European winter storms come in runs when the jet stream stays strong and zonal for weeks: Lothar and Martin two days apart in December 1999, or Daria, Vivian and Wiebke in early 1990. Cat models usually assume Poisson arrivals, which ignores this. I tested it in two steps.
 
-- **Is it in the Swiss data?** I counted the 142 historical storms per winter (1940/41–2013/14) and computed the dispersion φ = var/mean − 1 (Mailier et al. 2006). It comes out at −0.06 ± 0.17, which is consistent with Poisson but also with moderate clustering. Only 7 storms caused more than CHF 10 m of modelled loss, too few to test on their own.
-- **Would it matter?** I swapped Poisson for a negative binomial with the same mean (φ = 0.5 and 1) and kept everything else fixed (100,000 years):
+- Is it in the Swiss data? I counted the 142 historical storms per winter (1940/41 to 2013/14) and computed the dispersion φ = var/mean − 1 (Mailier et al. 2006). It comes out at −0.06 ± 0.17, which is consistent with Poisson but also with moderate clustering. Only 7 storms caused more than CHF 10 m of modelled loss, too few to test on their own.
+- Would it matter? I swapped Poisson for a negative binomial with the same mean (φ = 0.5 and 1) and kept everything else fixed (100,000 years):
 
 | φ   | AAL (CHF m) | 1-in-10 AEP (m) | 1-in-200 AEP (bn) | P(≥2 damaging storms in a year) | Rate on line |
 | --- | ----------- | --------------- | ----------------- | ------------------------------- | ------------ |
@@ -64,7 +64,7 @@ Clustering raises the chance of a multi-storm winter by ~40% but doesn't touch t
 
 Ranked by how far they could move the 1-in-200 loss:
 
-1. **Lothar's loss on today's portfolio.** CHF 600 m building loss in 1999 (sources say 500–600 m) × an assumed trend factor of 1.5. The tail scales one for one with this. It's the first number I'd want to check against the cantonal insurers' (VKG) loss and insured-value series.
+1. **Lothar's loss on today's portfolio.** CHF 600 m building loss in 1999 (Blick reports 600 m, PLANAT 500 m) × an assumed trend factor of 1.5. The tail scales one for one with this. It's the first number I'd want to check against the cantonal insurers' (VKG) loss and insured-value series.
 2. **The hazard catalogue.** 142 historical storms with 29 perturbations each. The perturbations stay close to their parent, so the tail rests on very few independent storms. No climate trend.
 3. **Exposure.** LitPop's pattern of economic activity rescaled to the CHF 2,500 bn insured by the cantonal building insurers and applied to all of Switzerland. Buildings only: no contents, business interruption, deductibles or limits.
 4. **Footprint resolution.** 4.4 km gusts smooth out local peaks (ridges, foehn valleys). The calibration absorbs this on average but not location by location.
@@ -88,4 +88,4 @@ Code: `src/chstorm/` (`inputs` hazard and exposure, `impact` curves, calibration
 
 ## Not covered
 
-Severe convective storm (hail) is the other major Swiss atmospheric peril. Modelling it properly needs radar hail data and claims that aren't openly available, so it's left out.
+Severe convective storm (hail) is the other major Swiss atmospheric peril. Modelling it properly needs radar hail data and claims that aren't openly available, so I left it out.
