@@ -29,13 +29,14 @@ CHF 1,000 m xs 250 m, per storm, one reinstatement at 100%.
 - **Simulation noise:** even with 10,000 simulated years, only about 50 are that extreme, so the 1-in-200 figure itself carries about ±15% (CHF 1.09–1.44 bn).
 - **The bigger unknown is the Lothar anchor.** Lothar's building loss is reported at CHF 500–600 m, and the 1.5× uplift to today's values is an assumption. A 20% change here moves the tail losses by about 20% (the layer price moves more, because the attachment is fixed).
 
+- **Storms in clusters:** tested and small here. Even if winters bring storms in runs, the 1-in-200 annual loss and the layer price stay put, because the Swiss tail is one big storm. A winter with two damaging storms becomes about 40% more likely (0.8% → 1.2% a year). What the model can't rule out is two *severe* storms in one winter (Lothar and Martin, two days apart in 1999).
+
 ## What the model leaves out
 
-- **Storms in clusters.** Lothar and Martin struck two days apart in 1999. The model treats storms as independent, so bad *years* (and reinstatement use) are probably understated.
 - **Contents, business interruption, deductibles and policy limits.** Buildings only, ground-up loss.
 - **Exact building locations.** Value is spread by economic activity, not actual addresses.
 - **Climate trend.** Storm frequency is taken from 1940–2013 as is.
 
 ## Bottom line
 
-On these assumptions, a 1-in-200 Swiss winter storm costs about **CHF 1.3 bn** to buildings, and a layer from CHF 250 m to 1.25 bn costs about **1.1% rate on line** in expected loss. The answer depends more on how big Lothar really was than on modelling detail, so the first thing to firm up is the Lothar loss on today's portfolio, followed by storm clustering.
+On these assumptions, a 1-in-200 Swiss winter storm costs about **CHF 1.3 bn** to buildings, and a layer from CHF 250 m to 1.25 bn costs about **1.1% rate on line** in expected loss. The answer depends more on how big Lothar really was than on modelling detail, so the first thing to firm up is the Lothar loss on today's portfolio.

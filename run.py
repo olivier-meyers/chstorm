@@ -1,4 +1,4 @@
-"""Entry point: runs the pipeline end to end, filled in per milestone."""
+"""Runs the model end to end: inputs, losses, layer, curve-shape and clustering sensitivity."""
 
 from pathlib import Path
 
@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from chstorm.clustering import dispersion, winter_counts
 from chstorm.financial import cat_xl
 from chstorm.impact import calibration_scale, event_losses, make_impf_set, sample_ylt
 from chstorm.inputs import event_by_date, historical_mask, load_exposure, load_hazard
@@ -21,7 +22,7 @@ from chstorm.metrics import (
 
 ROOT = Path(__file__).parent
 CONFIG = ROOT / "config.yaml"
-OUT = ROOT / "outputs"
+OUT = ROOT / "docs" / "figures"  # committed, so the README can show them
 
 
 def m1_inputs(cfg: dict):
@@ -42,7 +43,6 @@ def m1_inputs(cfg: dict):
     )
     print(f"Exposure: {len(exp.gdf)} points, total CHF {exp.gdf.value.sum() / 1e9:,.0f} bn")
 
-    OUT.mkdir(exist_ok=True)
     g = exp.gdf
     fig, ax = plt.subplots(1, 2, figsize=(12, 4.5))
     sc = ax[0].scatter(g.geometry.x, g.geometry.y, c=np.log10(g.value), s=6, cmap="viridis")
@@ -58,7 +58,7 @@ def m1_inputs(cfg: dict):
         a.set_xlabel("lon")
         a.set_ylabel("lat")
     fig.tight_layout()
-    fig.savefig(OUT / "m1_exposure_lothar.png", dpi=120)
+    fig.savefig(OUT / "exposure_lothar.png", dpi=120)
     return haz, exp
 
 
@@ -195,18 +195,87 @@ def m4_uncertainty(cfg: dict, haz, exp, ylt_base) -> pd.DataFrame:
         a.legend()
         a.grid(alpha=0.3)
     fig.tight_layout()
-    fig.savefig(OUT / "m4_shape_uncertainty.png", dpi=120)
+    fig.savefig(OUT / "shape_uncertainty.png", dpi=120)
+    return tab
+
+
+def m5_clustering(cfg: dict, haz, loss) -> pd.DataFrame:
+    """Serial clustering: test the historical record, then stress the YLT with phi > 0.
+
+    Same storms, same mean rate, same AAL; only the spread of storms across years changes.
+    """
+    c = cfg["clustering"]
+    n_years = int(c["n_sim_years"])
+    hist = historical_mask(haz)
+    counts = winter_counts(haz.date[hist])
+    big = winter_counts(haz.date[hist & (loss >= float(c["damaging_loss_chf"]))])
+    big = big.reindex(counts.index, fill_value=0)
+    phi, se = dispersion(counts.to_numpy())
+    phi_big, _ = dispersion(big.to_numpy())
+    thr_m = float(c["damaging_loss_chf"]) / 1e6
+    print(
+        f"M5 clustering, {len(counts)} winters {counts.index[0]}/{counts.index[-1] + 1}: "
+        f"all storms mean {counts.mean():.2f}/winter, phi = {phi:.2f} +- {se:.2f} (Poisson: 0); "
+        f"storms >= CHF {thr_m:.0f} m: {big.sum()}, phi = {phi_big:.2f}"
+    )
+
+    freq = np.asarray(haz.frequency)
+    rows, aeps = {}, {}
+    for d in [0.0, *c["dispersion_stress"]]:
+        elt, ylt = sample_ylt(loss, freq, n_years, dispersion=float(d))
+        agg, oep = ylt["agg_loss"].to_numpy(), ylt["max_loss"].to_numpy()
+        s = m3_layer(cfg, elt, n_years, verbose=False)
+        n_big = elt[elt["loss"] >= float(c["damaging_loss_chf"])].groupby("year").size()
+        rows[f"phi={d:g}"] = {
+            "AAL_m": agg.mean() / 1e6,
+            "AEP10_m": return_period_loss(agg, 10) / 1e6,
+            "AEP50_m": return_period_loss(agg, 50) / 1e6,
+            "AEP200_bn": return_period_loss(agg, 200) / 1e9,
+            "OEP200_bn": return_period_loss(oep, 200) / 1e9,
+            "P_2plus_damaging_pct": (n_big >= 2).sum() / n_years * 100,
+            "ROL_pct": s["rate_on_line"] * 100,
+        }
+        aeps[d] = agg
+    tab = pd.DataFrame(rows).T
+    print(tab.round(2).to_string())
+
+    fig, ax = plt.subplots(1, 2, figsize=(12, 4.5))
+    ax[0].bar(counts.index, counts.to_numpy(), color="lightgrey", label="all storms in the set")
+    ax[0].bar(big.index, big.to_numpy(), color="C3", label="damaging (modelled loss >= CHF 10 m)")
+    for yr, lab in ((1989, "Vivian\n1990"), (1999, "Lothar\n1999")):
+        ax[0].annotate(lab, (yr, counts[yr]), ha="center", va="bottom", fontsize=8)
+    ax[0].set_xlabel("winter (start year)")
+    ax[0].set_ylabel("storms per winter")
+    ax[0].set_title(f"Historical storms reaching CH: phi = {phi:.2f} +- {se:.2f}")
+    ax[0].legend(fontsize=8)
+    for d, agg in aeps.items():
+        x, f = exceedance_curve(agg)
+        ax[1].plot(1 / f, x / 1e6, label=f"AEP, phi = {d:g}")
+    ax[1].set_xscale("log")
+    ax[1].set_yscale("log")
+    ax[1].set_xlim(1, 1000)
+    ax[1].set_ylim(1, 3000)
+    ax[1].set_xlabel("return period (years)")
+    ax[1].set_ylabel("annual aggregate loss (CHF m)")
+    ax[1].set_title("Clustering stress: same storms, same AAL")
+    ax[1].legend()
+    for a in ax:
+        a.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(OUT / "clustering.png", dpi=120)
     return tab
 
 
 def main() -> None:
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     n_years = int(cfg["hazard"]["n_sim_years"])
+    OUT.mkdir(parents=True, exist_ok=True)
     haz, exp = m1_inputs(cfg)
     loss, elt, ylt = m2_losses(cfg, haz, exp)
-    plot_ep(ylt, OUT / "m2_ep_curve.png")
+    plot_ep(ylt, OUT / "ep_curve.png")
     m3_layer(cfg, elt, n_years)
     m4_uncertainty(cfg, haz, exp, ylt)
+    m5_clustering(cfg, haz, loss)
 
 
 if __name__ == "__main__":

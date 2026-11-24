@@ -1,91 +1,91 @@
-# chstorm: a winter storm loss model for Swiss property
+# chstorm: winter storm risk for Swiss buildings
 
-> Portfolio project, not a production model. One-page summary for underwriters: [docs/underwriter_summary.md](docs/underwriter_summary.md).
+How much could a European windstorm cost Swiss property, and what would a reinsurance layer on top of it be worth? This repo answers that with open data and [CLIMADA](https://github.com/CLIMADA-project/climada_python): storm footprints, an exposure map, a damage curve calibrated to Lothar (1999), and from there an event loss table, EP curves and a cat XL price.
 
-A small, reproducible extratropical windstorm catastrophe model for Swiss property, built on [CLIMADA](https://github.com/CLIMADA-project/climada_python):
+I'm a geophysicist and built an earthquake model for Switzerland first (chquake). Windstorm is a different kind of peril: the hazard is a meteorological footprint rather than a ground-motion field, the losses come from many moderate events rather than a few rare ones, and storms can arrive in series. I built this to learn those differences properly. The meteorology here is what I read and checked for this project, not my training, so the hazard side leans on published footprints (WISC) instead of anything I generated myself.
 
-**hazard → exposure → vulnerability → event loss table → EP metrics → cat XL layer**
+Short version for underwriters: [docs/underwriter_summary.md](docs/underwriter_summary.md).
 
-The aim is a transparent "own view of risk" that runs from storm footprints to a reinsurance layer price, with the vulnerability assumption stress-tested and the model checked against a historical storm (Lothar, 1999). It is not a calibrated replica of a vendor model.
+## What I found
 
-## Status
-
-| Milestone | Content                                                          | Status  |
-| --------- | ---------------------------------------------------------------- | ------- |
-| M0        | Scaffold (packaging, lint, tests, config with sources)           | done    |
-| M1        | Hazard (StormEurope footprints) + exposure (LitPop, Switzerland) | done    |
-| M2        | Impact function (Schwierz, calibrated to Lothar) → ELT/YLT → AAL, OEP/AEP | done |
-| M3        | Cat XL layer: expected layer loss, rate on line                  | done    |
-| M4        | Uncertainty (vulnerability curve shape, sampling CI) + Lothar return period | done |
-| M5        | Final README, assumptions review, one-page summary for underwriters | done |
-
-## Quick start
-
-```
-# OpenBLAS instead of MKL: MKL crashed numpy's linear algebra on the dev machine (Windows)
-conda create -n climada -c conda-forge --override-channels python=3.11 climada "libblas=*=*openblas" pytest ruff -y
-conda activate climada
-pip install -e . --no-deps
-# Windows: GDAL needs GDAL_DATA, e.g. $env:GDAL_DATA="$env:CONDA_PREFIX\Library\share\gdal"
-pytest
-python run.py   # runs M1-M4 in order, prints the tables and writes the figures to outputs/
-```
+1. **The Swiss storm tail is one storm deep.** The OEP curve goes from CHF 0.18 bn at 1-in-50 to 0.89 bn at 1-in-100. Everything above that is Lothar and its 29 synthetic perturbations. In the model, Lothar costs 7× the next-worst historical storm (Vivian, 1990).
+2. **So the calibration anchor matters more than the damage curve.** I tried four curve shapes, each re-calibrated to Lothar. The 1-in-200 loss only moves between CHF 1.15 and 1.39 bn, about the same spread as the Monte Carlo noise. The Lothar loss itself (CHF 500–600 m in 1999, trended to today) moves the tail one for one.
+3. **Swapping Schwierz for Welker tests nothing.** In CLIMADA, the Welker curve is a constant ~1.78× Schwierz, so once calibrated both give the same numbers. A useful sensitivity has to change the shape of the curve, not its level.
+4. **Storm clustering barely moves this portfolio.** 74 winters of data can't tell clustered from Poisson for Switzerland (φ = −0.06 ± 0.17). Even with strong clustering imposed (φ = 1), the 1-in-200 aggregate loss and the layer price don't change. The tail is a single storm, and a second storm in the same winter is usually small. This would look different for a UK or North Sea book, or for a low layer.
 
 ## Results
 
-Inputs:
+10,000 simulated years, Schwierz curve scaled ×6.18 so Lothar costs CHF 0.9 bn on today's portfolio.
 
-| Input           | Value                                                                               |
-| --------------- | ----------------------------------------------------------------------------------- |
-| Hazard          | StormEurope, Switzerland, v1.2: 4,260 events (142 historical), 1.95 events per year |
-| Exposure        | LitPop Switzerland v3, rescaled to CHF 2,500 bn (VKG 2024)                          |
-| Reference storm | Lothar, event 15100, 26 Dec 1999                                                    |
+| Metric                      | CHF                   |
+| --------------------------- | --------------------- |
+| Average annual loss         | 23 m (0.009‰ of value) |
+| 1-in-50 / 100 / 200 / 250 OEP | 0.18 / 0.89 / 1.27 / 1.44 bn |
+| Expected shortfall 99%      | 1.35 bn               |
+| Lothar today, modelled return period | ~100 years  |
 
-Losses (10,000 simulated years, Schwierz curve scaled x6.18 so Lothar = CHF 0.9 bn in today's values; the scaling target is illustrative):
+Illustrative layer CHF 1,000 m xs 250 m per occurrence, one reinstatement at 100%: expected loss CHF 11.1 m, pure premium 11.0 m, **rate on line 1.10%**, attaches about once in 58 years.
 
-| Metric                         | CHF        |
-| ------------------------------ | ---------- |
-| Average annual loss (AAL)      | 23 m       |
-| 100 / 200 / 250-yr OEP loss    | 0.89 / 1.27 / 1.44 bn |
-| Expected shortfall 99%         | 1.35 bn    |
+![Exposure and the Lothar footprint](docs/figures/exposure_lothar.png)
 
-Illustrative cat XL layer, CHF 1,000 m xs 250 m, one reinstatement at 100%: expected layer loss CHF 11.1 m, rate on line 1.10%, attaches about once in 58 years.
+### Damage curve shape
 
-Without calibration the Schwierz curve gives Lothar only CHF 0.15 bn, roughly a sixth of the observed building loss. CLIMADA's Welker curve is a constant multiple (~1.78x) of Schwierz, so after calibration it gives the same answer; M4 therefore tests the curve's *shape* instead.
+Alternatives of the form damage = ((gust − 25) / 35)^n, n = 2, 3, 5 (n = 3 is the cubic law of Klawa & Ulbrich 2003), each scaled to reproduce Lothar and run on the same simulated years:
 
-### Uncertainty (M4)
+| Curve    | 1-in-200 OEP (CHF bn) | Rate on line |
+| -------- | --------------------- | ------------ |
+| Schwierz | 1.27                  | 1.10%        |
+| n = 2    | 1.15                  | 1.14%        |
+| n = 3    | 1.25                  | 1.11%        |
+| n = 5    | 1.39                  | 1.08%        |
 
-Three alternative curves, damage = ((gust − 25) / 35)^n with n = 2, 3, 5 (n = 3 is the cubic law of Klawa & Ulbrich 2003), each re-calibrated to Lothar and run on the same simulated years:
+90% bootstrap interval on the base 1-in-200 loss: CHF 1.09–1.44 bn.
 
-| Curve     | 200-yr OEP (CHF bn) |
-| --------- | ------------------- |
-| Schwierz  | 1.27                |
-| n = 2     | 1.15                |
-| n = 3     | 1.25                |
-| n = 5     | 1.39                |
+![Curve-shape sensitivity](docs/figures/shape_uncertainty.png)
 
-Across curves the AAL is CHF 20–23 m, the layer rate on line 1.08–1.14%, and Lothar's modelled return period 94–104 years, which is plausible for the benchmark storm of the past century. The shape spread (×1.20) is about the same size as the sampling noise: the 90% bootstrap interval on the base 200-yr loss is CHF 1.09–1.44 bn.
+### Clustering
 
-Why the shape matters so little: the OEP curve jumps from CHF 0.18 bn at 50 years to 0.89 bn at 100 years. The tail is the Lothar family (Lothar plus its 29 synthetic perturbations), so calibrating to Lothar pins the tail and every curve agrees there.
+European winter storms come in runs when the jet stream stays strong and zonal for weeks: Lothar and Martin two days apart in December 1999, or Daria, Vivian and Wiebke in early 1990. Cat models usually assume Poisson arrivals, which ignores this. I tested it in two steps:
 
-![Curve-shape sensitivity](outputs/m4_shape_uncertainty.png)
+- **Is it in the Swiss data?** I counted the 142 historical storms per winter (1940/41–2013/14) and computed the dispersion φ = var/mean − 1 (Mailier et al. 2006). It comes out at −0.06 ± 0.17, which is consistent with Poisson but also with moderate clustering. Only 7 storms caused more than CHF 10 m of modelled loss, too few to test on their own.
+- **Would it matter?** I swapped Poisson for a negative binomial with the same mean (φ = 0.5 and 1) and kept everything else fixed (100,000 years):
 
-## Main assumptions and limitations
+| φ   | AAL (CHF m) | 1-in-10 AEP (m) | 1-in-200 AEP (bn) | P(≥2 damaging storms in a year) | Rate on line |
+| --- | ----------- | --------------- | ----------------- | ------------------------------- | ------------ |
+| 0   | 23.6        | 15.1            | 1.27              | 0.83%                           | 1.10%        |
+| 0.5 | 23.8        | 15.3            | 1.28              | 1.00%                           | 1.11%        |
+| 1   | 23.8        | 15.3            | 1.28              | 1.16%                           | 1.10%        |
 
-Ranked by how much they could move the 200-yr loss:
+Clustering raises the chance of a multi-storm winter by ~40% but doesn't touch the tail. One caveat: here clustering changes how many storms happen, not how strong they are. Published work (Pinto et al. 2013) finds clustering is stronger for the most intense storms. A Lothar-plus-Martin year, two severe storms in a week, is exactly what this setup can't produce, and with 7 damaging storms in 74 years the Swiss record can't measure it either. If I took this further, that's where I'd look next.
 
-1. **Calibration target.** Lothar building loss CHF 600 m (sources range 500–600 m) × an illustrative trend factor of 1.5 to today's portfolio. The tail scales almost one-for-one with this number, so it matters more than the curve choice.
-2. **Hazard catalogue.** 142 historical storms (1940–2013), each with 29 perturbations. The perturbations stay close to the parent storm, so the tail rests on very few independent events. No climate trend is applied.
-3. **No clustering.** Storms arrive as independent Poisson events. European windstorms cluster (Lothar and Martin hit two days apart in 1999), so the AEP and the value of reinstatements are likely understated.
-4. **Exposure.** LitPop's spatial pattern (economic activity, not building locations), rescaled to the CHF 2,500 bn insured by the cantonal building insurers and applied to all of Switzerland. Buildings only: no contents, no business interruption, no deductibles or policy limits.
-5. **Footprint resolution.** 4.4 km gusts smooth local peaks; the calibration absorbs this on average but not location by location.
+![Clustering](docs/figures/clustering.png)
 
-The layer (CHF 1,000 m xs 250 m) is illustrative and is not a real treaty.
+## Assumptions that matter most
 
-## Layout
+Ranked by how far they could move the 1-in-200 loss:
 
-`src/chstorm/` package (`inputs.py`, `impact.py`, `metrics.py`, `financial.py`, `losses.py`; metrics and financial are reused from the chquake earthquake model), `config.yaml` (parameters with sources), `run.py`, `tests/`, `outputs/`.
+1. **Lothar's loss on today's portfolio.** CHF 600 m building loss in 1999 (sources say 500–600 m) × an assumed trend factor of 1.5. The tail scales one for one with this. It's the first number I'd want to check against the cantonal insurers' (VKG) loss and insured-value series.
+2. **The hazard catalogue.** 142 historical storms with 29 perturbations each. The perturbations stay close to their parent, so the tail rests on very few independent storms. No climate trend.
+3. **Exposure.** LitPop's pattern of economic activity rescaled to the CHF 2,500 bn insured by the cantonal building insurers and applied to all of Switzerland. Buildings only: no contents, business interruption, deductibles or limits.
+4. **Footprint resolution.** 4.4 km gusts smooth out local peaks (ridges, foehn valleys). The calibration absorbs this on average but not location by location.
+5. **Intensity-dependent clustering**, as above.
 
-## Extension
+The layer is illustrative, not a real treaty. Every parameter in [config.yaml](config.yaml) has a source or is labelled as an assumption.
 
-Severe convective storm (hail) is the natural second peril but needs radar and claims data that are not openly available.
+## Running it
+
+```
+# conda-forge with OpenBLAS: MKL crashed numpy on my Windows machine
+conda create -n climada -c conda-forge --override-channels python=3.11 climada "libblas=*=*openblas" pytest ruff -y
+conda activate climada
+pip install -e . --no-deps
+# Windows: set GDAL_DATA, e.g. $env:GDAL_DATA="$env:CONDA_PREFIX\Library\share\gdal"
+pytest
+python run.py   # prints every table above and redraws docs/figures/ (a few minutes, data downloads on first run)
+```
+
+Code: `src/chstorm/` (`inputs` hazard and exposure, `impact` curves, calibration and year simulation, `clustering`, `metrics` EP and bootstrap, `financial` cat XL with reinstatements; the last two are shared with chquake), `run.py`, `tests/`.
+
+## Not covered
+
+Severe convective storm (hail) is the other major Swiss atmospheric peril. Modelling it properly needs radar hail data and claims that aren't openly available, so it's left out.

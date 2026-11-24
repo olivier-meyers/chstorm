@@ -1,8 +1,11 @@
 # Data: CLIMADA downloads to ~/climada/data, local extracts go here; never committed
 data/
 
-# Model outputs (selected figures are copied to docs/)
+# Old output folder (figures now go to docs/figures/)
 outputs/
+
+# Local working notes
+CLAUDE.md
 
 # Python
 __pycache__/

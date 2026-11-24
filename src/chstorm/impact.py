@@ -75,13 +75,29 @@ def event_losses(haz, exp, impf_set) -> np.ndarray:
     return ImpactCalc(exp, impf_set, haz).impact(save_mat=False).at_event
 
 
+def sample_counts(lam: float, n_years: int, rng, dispersion: float = 0.0) -> np.ndarray:
+    """Storms per year: Poisson if dispersion == 0, else negative binomial with the same mean.
+
+    dispersion phi = var / mean - 1 (Mailier et al. 2006). phi > 0 means storms cluster: some
+    winters get several (a persistent, strong jet), others almost none.
+    """
+    if dispersion <= 0:
+        return rng.poisson(lam, n_years)
+    r = lam / dispersion  # NB(r, p): mean r(1-p)/p = lam, var = lam (1 + phi)
+    return rng.negative_binomial(r, r / (r + lam), n_years)
+
+
 def sample_ylt(
-    loss: np.ndarray, freq: np.ndarray, n_years: int, seed: int = 0
+    loss: np.ndarray, freq: np.ndarray, n_years: int, seed: int = 0, dispersion: float = 0.0
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Poisson occurrence: returns (elt, ylt). ELT has one row per simulated storm occurrence."""
+    """Returns (elt, ylt). ELT has one row per simulated storm occurrence.
+
+    Which storms occur is drawn independently of the count, so clustering here raises the number
+    of storms in bad years but not their severity (intensity-dependent clustering is not modelled).
+    """
     rng = np.random.default_rng(seed)
     lam = float(freq.sum())
-    counts = rng.poisson(lam, n_years)
+    counts = sample_counts(lam, n_years, rng, dispersion)
     year = np.repeat(np.arange(n_years), counts)
     event_idx = rng.choice(len(loss), size=counts.sum(), p=freq / lam)
     elt = build_elt(event_idx, year, loss[event_idx])

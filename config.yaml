@@ -49,3 +49,13 @@ calibration:
   # Restates the 1999 loss on today's portfolio: construction-cost inflation x growth of the building stock,
   # 1999-2024. ILLUSTRATIVE ASSUMPTION (~+1.8%/yr compound), to be checked against VKG insured-value series.
   trend_factor_to_2024: 1.5
+
+clustering:
+  # Storm counts per winter from the 142 historical WISC storms test for clustering (phi = var/mean - 1,
+  # Mailier et al. 2006, MWR 134). The stress values are ILLUSTRATIVE: published phi for intense storms over
+  # western/central Europe is positive and grows with intensity (Mailier et al. 2006; Pinto et al. 2013,
+  # JGR 118), but I have no Swiss-specific estimate, so 0.5 and 1.0 bracket it rather than measure it.
+  dispersion_stress: [0.5, 1.0]
+  n_sim_years: 100000            # 10x the base run: at 10,000 years the Lothar family alone makes the AAL
+                                 # jump by ~8% between seeds, which is the same size as the clustering effect
+  damaging_loss_chf: 1.0e+7      # "damaging storm" = modelled loss >= CHF 10 m, for counting multi-storm winters
