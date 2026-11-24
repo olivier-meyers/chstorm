@@ -1,14 +1,12 @@
 # chstorm: winter storm risk for Swiss buildings
 
-How much could a European windstorm cost Swiss property, and what would a reinsurance layer on top of it be worth? This repo answers that with open data and [CLIMADA](https://github.com/CLIMADA-project/climada_python): storm footprints, an exposure map, a damage curve calibrated to Lothar (1999), and from there an event loss table, EP curves and a cat XL price.
+This project studies the question: How much could a European windstorm cost Swiss properties, and what would a reinsurance layer on top of it be worth? This repo was made with open data and [CLIMADA](https://github.com/CLIMADA-project/climada_python). It includes storm footprints, an exposure map, a damage curve calibrated to Lothar (1999), as well as a loss table, EP curves and a cat XL price.
 
-I'm a geophysicist and built an earthquake model for Switzerland first (chquake). Windstorm is a different kind of peril: the hazard is a meteorological footprint rather than a ground-motion field, the losses come from many moderate events rather than a few rare ones, and storms can arrive in series. I built this to learn those differences properly. The meteorology here is what I read and checked for this project, not my training, so the hazard side leans on published footprints (WISC) instead of anything I generated myself.
+Short summary: [docs/underwriter_summary.md](docs/underwriter_summary.md).
 
-Short version for underwriters: [docs/underwriter_summary.md](docs/underwriter_summary.md).
+## Takeaways 
 
-## What I found
-
-1. **The Swiss storm tail is one storm deep.** The OEP curve goes from CHF 0.18 bn at 1-in-50 to 0.89 bn at 1-in-100. Everything above that is Lothar and its 29 synthetic perturbations. In the model, Lothar costs 7× the next-worst historical storm (Vivian, 1990).
+1. **The Swiss storm tail is dominated by one storm.** The OEP curve goes from CHF 0.18 bn at 1-in-50 to 0.89 bn at 1-in-100. Everything above that is related to Lothar (1999) and its 29 synthetic variations. In the model, Lothar costs 7 times the next-worst historical storm (Vivian, 1990).
 2. **So the calibration anchor matters more than the damage curve.** I tried four curve shapes, each re-calibrated to Lothar. The 1-in-200 loss only moves between CHF 1.15 and 1.39 bn, about the same spread as the Monte Carlo noise. The Lothar loss itself (CHF 500–600 m in 1999, trended to today) moves the tail one for one.
 3. **Swapping Schwierz for Welker tests nothing.** In CLIMADA, the Welker curve is a constant ~1.78× Schwierz, so once calibrated both give the same numbers. A useful sensitivity has to change the shape of the curve, not its level.
 4. **Storm clustering barely moves this portfolio.** 74 winters of data can't tell clustered from Poisson for Switzerland (φ = −0.06 ± 0.17). Even with strong clustering imposed (φ = 1), the 1-in-200 aggregate loss and the layer price don't change. The tail is a single storm, and a second storm in the same winter is usually small. This would look different for a UK or North Sea book, or for a low layer.
