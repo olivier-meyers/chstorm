@@ -24,6 +24,10 @@ These come from 10,000 simulated years, with the Schwierz curve scaled ×6.18 so
 | Expected shortfall 99%      | 1.35 bn               |
 | Lothar today, modelled return period | ~100 years  |
 
+![OEP and AEP curves: flat to 1-in-50, then a jump to 0.9 bn at 1-in-100 as the Lothar family enters](docs/figures/ep_curve.png)
+
+AEP and OEP lie almost on top of each other: in a bad year the loss comes from one storm, not from several adding up.
+
 Illustrative layer CHF 1,000 m xs 250 m per occurrence, one reinstatement at 100%: expected loss CHF 11.1 m, pure premium 11.0 m, **rate on line 1.10%**, attaches about once in 58 years.
 
 ![Exposure and the Lothar footprint](docs/figures/exposure_lothar.png)
